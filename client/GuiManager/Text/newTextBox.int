@@ -2,6 +2,7 @@ function gui:newTextBox(t,name, x, y, w, h, sx ,sy ,sw ,sh)
 	x,y,w,h,sx,sy,sw,sh=filter(name, x, y, w, h, sx ,sy ,sw ,sh)
 	local c=self:newBase("TextBox",name, x, y, w, h, sx ,sy ,sw ,sh)
 	c.ClearOnFocus=false
+	c.LoseFocusOnEnter=true
 	c.Tween=0
 	c.XTween=0
 	c.FontHeight=_defaultfont:getHeight()
@@ -72,7 +73,11 @@ function gui:newTextBox(t,name, x, y, w, h, sx ,sy ,sw ,sh)
 			self.cooldown2=true
 			c.Alarm2:Reset()
 		elseif (love.keyboard.isDown("return") or love.keyboard.isDown("enter") or love.keyboard.isDown("kpenter")) and self.Active and self.Enter and not(love.keyboard.isDown("lshift") or love.keyboard.isDown("rshift")) then
-			self.Active=false
+			if self.LoseFocusOnEnter then
+				self.Active=false
+			else
+				self.Active=true
+			end
 			for cc=1,#self.funcE do
 				self.funcE[cc](self,self.ttext)
 			end
@@ -91,6 +96,7 @@ function love.textinput(t)
 					gui.TB[tb].ttext=gui.TB[tb].ttext..t
 				else
 					gui.TB[tb].text=gui.TB[tb].text..t
+					gui.TB[tb].ttext=gui.TB[tb].ttext..t
 				end
 			end
 		end
