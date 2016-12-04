@@ -598,6 +598,16 @@ function io.getFullName(name)
 	end
 	return temp
 end
+function io.getName(file)
+	local name=io.getFullName(file)
+	name=string.reverse(name)
+	a,b=string.find(name,'.',1,true)
+	name=string.sub(name,a+1,-1)
+	return string.reverse(name)
+end
+function io.getPathName(path)
+	return path:sub(1,#path-#io.getFullName(path))
+end
 function table.merge(t1, t2)
     for k,v in pairs(t2) do
     	if type(v) == 'table' then
@@ -902,8 +912,184 @@ function randomGen:newND(a,b,s)
 	return temp
 end
 --[[----------------------------------------
+LWZ
+------------------------------------------]]
+--~ bitM=2^8
+--~ bitS=2^7
+--~ lzw = {}
+--~ local function enc_reset(dict, size)
+--~   for k, _ in pairs(dict) do dict[k] = nil end
+--~   for i = 0, size-1 do dict[string.char(i)] = i end
+--~   return dict
+--~ end
+--~ local function dec_reset(dict, size)
+--~   for k, _ in pairs(dict) do dict[k] = nil end
+--~   for i = 0, size-1 do dict[i] = string.char(i) end
+--~   return dict
+--~ end
+--~ lzw.encode = function(message)
+--~   local w, result, size = "", {}, bitM
+--~   local dict = enc_reset({}, size)
+--~   for k in message:gmatch('.') do
+--~     local wk = w .. k
+--~     if dict[wk] then
+--~       w = wk
+--~     else
+--~       result[#result+1] = dict[w]
+--~       dict[wk] = size
+--~       size = size + 1
+--~       w = k
+--~     end
+--~   end
+--~   if w:len() > 0 then
+--~     result[#result+1] = dict[w]
+--~   end
+--~   return result
+--~ end
+--~ lzw.short_encode = function(message)
+--~   local w, result, size = "", {}, bitS
+--~   local dict = enc_reset({}, size)
+--~   for k in string.gmatch(message, '.') do
+--~     local wk = w .. k
+--~     if dict[wk] then
+--~       w = wk
+--~     else
+--~       result[#result+1] = string.char(dict[w])
+--~       dict[wk] = size
+--~       size = size + 1
+--~       if size == bitM then
+--~         size = bitS
+--~         enc_reset(dict, size)
+--~       end
+--~       w = k
+--~     end
+--~   end
+--~   if w:len() > 0 then
+--~     result[#result+1] = string.char(dict[w])
+--~   end
+--~   return table.concat(result)
+--~ end
+--~ lzw.decode = function(cipher)
+--~   local w, entry, result  = "", "", {}
+--~   local size = bitM
+--~   local dict = dec_reset({}, size)
+--~   w = string.char(cipher[1])
+--~   result[1] = w
+--~   for i = 2, #cipher do
+--~     local codeword = cipher[i]
+--~     if dict[codeword] then
+--~       entry = dict[codeword]
+--~     else
+--~       entry = w .. w:sub(1,1)
+--~     end
+--~     dict[size] = w .. entry:sub(1, 1)
+--~     result[#result+1], w, size = entry, entry, size + 1
+--~   end
+--~   return table.concat(result)
+--~ end
+--~ lzw.short_decode = function(cipher)
+--~   local w, entry, result, size = "", "", {}, bitS
+--~   local dict = dec_reset({}, size)
+--~   w = cipher:sub(1, 1)
+--~   result[1] = w
+--~   for i = 2, cipher:len() do
+--~     local k = string.byte(cipher:sub(i, i))
+--~     if dict[k] then
+--~       entry = dict[k]
+--~     else
+--~       entry = w .. w:sub(1,1)
+--~     end
+--~     dict[size] = w .. entry:sub(1, 1)
+--~     result[#result+1], w, size = entry, entry, size + 1
+--~     if size >= bitM then
+--~       size = bitS
+--~       dec_reset(dict, size)
+--~     end
+--~   end
+--~   return table.concat(result)
+--~ end
+lzw = {}
+function lzw.encode(uncompressed) -- string
+  local dictionary, result, dictSize, w, c = {}, {}, 255, ""
+  for i = 0, 255 do
+    dictionary[string.char(i)] = i
+  end
+  for i = 1, #uncompressed do
+    c = string.sub(uncompressed, i, i)
+    if dictionary[w .. c] then
+      w = w .. c
+    else
+      table.insert(result, dictionary[w])
+      dictSize = dictSize + 1
+      dictionary[w .. c] = dictSize
+      w = c
+    end
+  end
+  if w ~= "" then
+    table.insert(result, dictionary[w])
+  end
+  return result
+end
+
+function lzw.decode(compressed) -- table
+  local dictionary, dictSize, entry, result, w, k = {}, 255, "", "", ""
+  for i = 0, 255 do
+    dictionary[i] = string.char(i)
+  end
+  for i = 1, #compressed do
+    k = compressed[i]
+    if dictionary[k] then
+      entry = dictionary[k]
+    elseif k == dictSize then
+      entry = w .. string.sub(w, 1, 1)
+    else
+      return nil, i
+    end
+    result = result .. entry
+    dictionary[dictSize] = w .. string.sub(entry, 1, 1)
+    dictSize = dictSize + 1
+    w = entry
+  end
+  return result
+end
+--[[----------------------------------------
 BIN
 ------------------------------------------]]
+function bin.compress(uncomp,n)
+	n=n or 9
+	local cipher = lzw.encode(uncomp)
+	local dat={}
+	for i=1,#cipher do
+		local fix=bits.new(cipher[i]).data:match("0*(%d+)")
+		if cipher[i]==0 then
+			fix=string.rep("0",n)
+		end
+		fix=string.rep("0",n-#fix)..fix
+		table.insert(dat,fix)
+	end
+	str=table.concat(dat,"")
+	str=string.rep("0",8-#str%8)..str
+	comp={}
+	for i=0,(#str/8) do
+		table.insert(comp,bits.new(str:sub(i*8+1,i*8+8)):toSbytes())
+	end
+	return table.concat(comp,"")
+end
+function bin.decompress(comp,n)
+	n=n or 9
+	local tab={}
+	for i=1,#comp do
+		table.insert(tab,bits.new(comp:sub(i,i)).data)
+	end
+	tab=table.concat(tab,"")
+	tab=tab:match("0*(%d+)")
+	tab=string.rep("0",n-#tab%n)..tab
+	uncomp={}
+	for i=0,(#tab/n) do
+		table.insert(uncomp,tonumber(tab:sub(i*n+1,i*n+n),2))
+	end
+	return lzw.decode(uncomp)
+end
 function bin:getSize()
 	return self:getlength()
 end
@@ -2547,10 +2733,13 @@ end
 --[[----------------------------------------
 BITS
 ------------------------------------------]]
-function bits.new(n)
+function bits.new(n,s)
 	if type(n)=='string' then
 		local t=tonumber(n,2)
-		if not t then
+		if t and #n<8 and not(s) then
+			t=nil
+		end
+		if not(t) then
 			t={}
 			for i=#n,1,-1 do
 				table.insert(t,bits:conv(string.byte(n,i)))
