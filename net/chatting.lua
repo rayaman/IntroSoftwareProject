@@ -7,7 +7,7 @@ server:OnChatRecieved(function({user,msg}) end)
 client:OnChatRecieved(function(user,msg) end)
 client:sendChat(user,msg)
 ]]
-net:registerModule("chatting",{1,0,0})
+net:registerModule("chatting",{2,1,0})
 function net.chatting:init() -- calling this initilizes the library and binds it to the servers and clients created
 	--Server Stuff
 	net.OnServerCreated:connect(function(s)
