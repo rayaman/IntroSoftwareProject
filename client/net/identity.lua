@@ -10,6 +10,8 @@ function net.hash(text,n)
 	n=n or 16
 	return bin.new(text.."jgmhktyf"):getHash(n)
 end
+net.identity.UIDS={}
+net.identity.UIDS.ids={}
 function net.identity:init() -- calling this initilizes the library and binds it to the servers and clients created
 	--Server Stuff
 	net.OnServerCreated:connect(function(s)
@@ -39,6 +41,7 @@ function net.identity:init() -- calling this initilizes the library and binds it
 			self.userFolder=loc
 		end
 		function s:loginUserOut(user)
+			net.identity.UIDS.ids[user.UID]=nil
 			self.loggedIn[user]=nil
 		end
 		function s:loginUserIn(user,cid)
@@ -47,6 +50,7 @@ function net.identity:init() -- calling this initilizes the library and binds it
 			table.merge(self.loggedIn[user],dTable or {})
 			self.loggedIn[user].cid=cid
 			self.loggedIn[user].nick=nick
+			self.loggedIn[user].UID=net.resolveID(net.identity.UIDS)
 			return self:getUserDataHandle(user)
 		end
 		function s:getUserDataHandle(user)
@@ -100,7 +104,7 @@ function net.identity:init() -- calling this initilizes the library and binds it
 					end
 					local handle=self:loginUserIn(user,cid) -- binds the cid to username
 					self:send(ip,"!identity! LOGINGOOD <-|"..bin.ToStr(handle).."|->",port)
-					self.OnUserLoggedIn:Fire(user,cid,ip,port)
+					self.OnUserLoggedIn:Fire(user,cid,ip,port,bin.ToStr(handle))
 					return
 				else
 					self:send(ip,"!identity! LOGINBAD <-|nil|->",port)
