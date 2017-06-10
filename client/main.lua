@@ -11,7 +11,7 @@ require("net") -- Loads the networking library
 require("net.chatting")
 require("net.settings") -- loads the networking settings module
 require("net.identity") -- loads the networking identity module
-client=net:newTCPClient("69.113.201.7",12345)
+client=net:newTCPClient("localhost",12345)
 if type(client)=="boolean" then error("Please run the server file first!") end
 client.OnUserLoggedIn:connect(function(self,data)
 	anim.Visible=false
